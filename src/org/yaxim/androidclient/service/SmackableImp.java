@@ -50,6 +50,17 @@ import org.jivesoftware.smackx.receipts.DeliveryReceipt;
 import org.jivesoftware.smackx.receipts.DeliveryReceiptManager;
 import org.jivesoftware.smackx.receipts.DeliveryReceiptRequest;
 import org.jivesoftware.smackx.receipts.ReceiptReceivedListener;
+
+import org.jivesoftware.smackx.filetransfer.FileTransferManager;
+import org.jivesoftware.smackx.filetransfer.OutgoingFileTransfer;
+import org.jivesoftware.smackx.provider.StreamInitiationProvider;
+import org.jivesoftware.smackx.bytestreams.socks5.provider.BytestreamsProvider;
+import org.jivesoftware.smackx.bytestreams.ibb.provider.OpenIQProvider;
+import org.jivesoftware.smackx.bytestreams.ibb.provider.CloseIQProvider;
+import org.jivesoftware.smackx.bytestreams.ibb.provider.DataPacketProvider;
+import org.jivesoftware.smackx.filetransfer.FileTransfer.Status;
+import org.jivesoftware.smackx.provider.DataFormProvider;
+
 import org.yaxim.androidclient.YaximApplication;
 import org.yaxim.androidclient.data.ChatProvider;
 import org.yaxim.androidclient.data.RosterProvider;
@@ -128,6 +139,14 @@ public class SmackableImp implements Smackable {
 		
 		// XEP-0115 Entity Capabilities
 		pm.addExtensionProvider("c", "http://jabber.org/protocol/caps", new CapsExtensionProvider());
+		
+		// FileTransfer
+        pm.addIQProvider("si","http://jabber.org/protocol/si", new StreamInitiationProvider());
+        pm.addIQProvider("query","http://jabber.org/protocol/bytestreams", new BytestreamsProvider());
+        pm.addIQProvider("open","http://jabber.org/protocol/ibb", new OpenIQProvider());
+        pm.addIQProvider("close","http://jabber.org/protocol/ibb", new CloseIQProvider());
+        pm.addExtensionProvider("data","http://jabber.org/protocol/ibb", new DataPacketProvider());		
+		pm.addExtensionProvider("x","jabber:x:data", new DataFormProvider());
 
 		XmppStreamHandler.addExtensionProviders();
 	}
