@@ -3,6 +3,7 @@ package org.yaxim.androidclient.service;
 import java.io.File;
 import java.util.Collection;
 import java.util.Date;
+import java.util.Iterator;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.X509TrustManager;
 
@@ -763,6 +764,78 @@ public class SmackableImp implements Smackable {
 		throws YaximXMPPException 
 	{
 		Log.w("Yaxim", "SmackableImp::sendFile: "+ to + " - " + file);
+		
+		//Create file descriptor and check if its valid
+		final File fo = new File(file);
+		if(!fo.exists())
+		{
+			Log.w("Yaxim", "SmackableImp::sendFile: file not found");
+			throw new YaximXMPPException("File not found!");
+		}
+		
+		Thread currentFileTransferThread = new Thread() {
+			@Override
+			public void run() {
+				
+				//Get a valid presence id with resource
+				//Currently random resource
+				Iterator<org.jivesoftware.smack.packet.Presence> presences = mRoster.getPresences(to);
+				String IdWithResource = to;
+				while(presences.hasNext())
+				{
+					IdWithResource = presences.next().getFrom();
+					Log.w("Yaxim", "\"" + IdWithResource + "\"");
+				}  
+								
+				OutgoingFileTransfer transfer = null;
+					
+				try {
+					transfer = manager.createOutgoingFileTransfer(IdWithResource);
+				}
+				catch (java.lang.Exception e) {
+					Log.w("Yaxim", "SmackableImp::sendFile: transfer create exception " + e.getMessage());
+					return;
+				}
+				
+				try {
+					transfer.sendFile(fo, "File sent using yaxim!");
+				}
+				catch (XMPPException e) {
+					Log.w("Yaxim", "SmackableImp::sendFile: SendFileError " + e.getLocalizedMessage());
+					return;
+				}
+				
+				while(!transfer.isDone()) 
+				{
+					try {
+						Thread.sleep(500L);
+						Log.w("Yaxim", (transfer.getProgress()*100) + "% done.");
+					} catch (InterruptedException e) {
+						Log.w("Yaxim", "SmackableImp::sendFile: Exception" + e.getLocalizedMessage());
+					}
+				}
+				
+				if (transfer.getStatus().equals(Status.refused))
+				{
+					Log.w("Yaxim", "SmackableImp::sendFile: Refused / Cancelled");
+				}
+				if (transfer.getStatus().equals(Status.cancelled))
+				{
+					Log.w("Yaxim", "SmackableImp::sendFile: Refused / Cancelled");
+				}
+				else if(transfer.getStatus().equals(Status.error)) 
+				{
+					Log.w("Yaxim", "SmackableImp::sendFile: Error!!! " + transfer.getError());
+				} 
+				else
+				{
+					Log.w("Yaxim", "SmackableImp::sendFile: Success");
+				}
+			}
+		};
+		
+		currentFileTransferThread.start();
+		
 		return true;
 	}
 
