@@ -187,6 +187,7 @@ public class SmackableImp implements Smackable {
 	private PongTimeoutAlarmReceiver mPongTimeoutAlarmReceiver = new PongTimeoutAlarmReceiver();
 	private BroadcastReceiver mPingAlarmReceiver = new PingAlarmReceiver();
 
+	private FileTransferManager manager = null;
 
 	public SmackableImp(YaximConfiguration config,
 			ContentResolver contentResolver,
@@ -273,6 +274,9 @@ public class SmackableImp implements Smackable {
 	private void finishConnectingThread() {
 		synchronized(mConnectingThreadMutex) {
 			mConnectingThread = null;
+			
+			//Init file transfer when connecting is over
+			initFileTransfer();
 		}
 	}
 
@@ -741,6 +745,18 @@ public class SmackableImp implements Smackable {
 			addChatMessageToDB(ChatConstants.OUTGOING, toJID, message, ChatConstants.DS_NEW,
 					System.currentTimeMillis(), newMessage.getPacketID());
 		}
+	}
+	
+	private void initFileTransfer()
+	{
+		// Create the file transfer manager
+		if (manager != null)
+		{
+			Log.w("Yaxim", "SmackableImp::sendFile: manager exists");
+			return;
+		}
+		
+		manager = new FileTransferManager(mXMPPConnection);
 	}
 	
 	public boolean sendFile(final String to, final String file)
