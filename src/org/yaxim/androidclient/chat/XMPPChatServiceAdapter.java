@@ -26,6 +26,15 @@ public class XMPPChatServiceAdapter {
 		}
 	}
 	
+	public void sendFile(String user, String file) {
+		try {
+			Log.i(TAG, "Called sendFile(): " + user);
+			xmppServiceStub.sendFile(user, file);
+		} catch (RemoteException e) {
+			Log.e(TAG, "caught RemoteException: " + e.getMessage());
+		}
+	}
+		
 	public boolean isServiceAuthenticated() {
 		try {
 			return xmppServiceStub.isAuthenticated();

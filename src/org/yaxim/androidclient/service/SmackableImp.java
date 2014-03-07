@@ -742,6 +742,13 @@ public class SmackableImp implements Smackable {
 					System.currentTimeMillis(), newMessage.getPacketID());
 		}
 	}
+	
+	public boolean sendFile(final String to, final String file)
+		throws YaximXMPPException 
+	{
+		Log.w("Yaxim", "SmackableImp::sendFile: "+ to + " - " + file);
+		return true;
+	}
 
 	public boolean isAuthenticated() {
 		if (mXMPPConnection != null) {

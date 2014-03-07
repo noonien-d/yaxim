@@ -160,6 +160,18 @@ public class XMPPService extends GenericService {
 					SmackableImp.sendOfflineMessage(getContentResolver(),
 							user, message);
 			}
+			public void sendFile(String user, String file)
+					throws RemoteException {
+				if (mSmackable != null)
+				{
+					try {
+						mSmackable.sendFile(user, file);
+					} catch (YaximXMPPException e) {
+						shortToastNotify(e.getMessage());
+						logError("exception in addRosterItem(): " + e.getMessage());
+					}
+				}
+			}
 
 			public boolean isAuthenticated() throws RemoteException {
 				if (mSmackable != null) {

@@ -27,5 +27,7 @@ public interface Smackable {
 	void registerCallback(XMPPServiceCallback callBack);
 	void unRegisterCallback();
 	
+	boolean sendFile(String to, String file) throws YaximXMPPException;
+	
 	String getNameForJID(String jid);
 }
