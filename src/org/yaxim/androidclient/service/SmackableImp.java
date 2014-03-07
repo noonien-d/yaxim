@@ -54,6 +54,9 @@ import org.jivesoftware.smackx.receipts.ReceiptReceivedListener;
 
 import org.jivesoftware.smackx.filetransfer.FileTransferManager;
 import org.jivesoftware.smackx.filetransfer.OutgoingFileTransfer;
+import org.jivesoftware.smackx.filetransfer.IncomingFileTransfer;
+import org.jivesoftware.smackx.filetransfer.FileTransferListener;
+import org.jivesoftware.smackx.filetransfer.FileTransferRequest;
 import org.jivesoftware.smackx.provider.StreamInitiationProvider;
 import org.jivesoftware.smackx.bytestreams.socks5.provider.BytestreamsProvider;
 import org.jivesoftware.smackx.bytestreams.ibb.provider.OpenIQProvider;
@@ -758,6 +761,56 @@ public class SmackableImp implements Smackable {
 		}
 		
 		manager = new FileTransferManager(mXMPPConnection);
+		
+		// Create the listener
+		manager.addFileTransferListener(new FileTransferListener() {
+			public void fileTransferRequest(FileTransferRequest request) {
+				
+				Log.w("Yaxim", "SmackableImp::receiveFile Incoming...");
+				
+				IncomingFileTransfer transfer = request.accept();
+				
+				//Remove resource from sender id
+				String from = request.getRequestor().split("/")[0];
+				String filename = transfer.getFileName();
+				
+				try {
+					transfer.recieveFile(new File("/sdcard/Download/"+filename));
+				} catch (XMPPException e)
+				{
+					Log.w("Yaxim", "SmackableImp::receiveFile Exception" + e.getLocalizedMessage());
+					return;
+				}
+				
+				Log.w("Yaxim", "SmackableImp::receiveFile: " + from + " "  + filename);
+				while(!transfer.isDone()) 
+				{
+					try {
+						Thread.sleep(500L);
+						Log.w("Yaxim", (transfer.getProgress()*100) + "% done.");
+					} catch (InterruptedException e) {
+						Log.w("Yaxim", "SmackableImp::receiveFile: Exception" + e.getLocalizedMessage());
+					}
+				}
+				
+				if (transfer.getStatus().equals(Status.refused))
+				{
+					Log.w("Yaxim", "SmackableImp::receiveFile: Refused / Cancelled");
+				}
+				if (transfer.getStatus().equals(Status.cancelled))
+				{
+					Log.w("Yaxim", "SmackableImp::receiveFile: Refused / Cancelled");
+				}
+				else if(transfer.getStatus().equals(Status.error)) 
+				{
+					Log.w("Yaxim", "SmackableImp::receiveFile: Error!!! " + transfer.getError());
+				} 
+				else
+				{
+					Log.w("Yaxim", "SmackableImp::receiveFile: Success");					
+				}		
+			}
+		});
 	}
 	
 	public boolean sendFile(final String to, final String file)
@@ -819,7 +872,7 @@ public class SmackableImp implements Smackable {
 				{
 					Log.w("Yaxim", "SmackableImp::sendFile: Refused / Cancelled");
 				}
-				if (transfer.getStatus().equals(Status.cancelled))
+				else if (transfer.getStatus().equals(Status.cancelled))
 				{
 					Log.w("Yaxim", "SmackableImp::sendFile: Refused / Cancelled");
 				}
