@@ -16,6 +16,7 @@ import org.yaxim.androidclient.util.StatusMode;
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.SherlockListActivity;
 import com.actionbarsherlock.view.Window;
+import com.actionbarsherlock.view.Menu;
 
 import android.content.ComponentName;
 import android.content.ContentValues;
@@ -50,6 +51,8 @@ import android.widget.ListAdapter;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.provider.MediaStore;
+import android.provider.MediaStore.Images;
 
 @SuppressWarnings("deprecation") /* recent ClipboardManager only available since API 11 */
 public class ChatWindow extends SherlockListActivity implements OnKeyListener,
@@ -115,6 +118,12 @@ public class ChatWindow extends SherlockListActivity implements OnKeyListener,
 		setCustomTitle(titleUserid);
 
 		setChatWindowAdapter();
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		getSupportMenuInflater().inflate(R.menu.chat_options, menu);
+		return true;
 	}
 
 	private void setCustomTitle(String title) {
@@ -274,7 +283,37 @@ public class ChatWindow extends SherlockListActivity implements OnKeyListener,
 		if (mChatInput.getText().length() >= 1) {
 			sendMessage(mChatInput.getText().toString());
 		}
+	}	
+
+	public String getRealPathFromURI(Uri contentUri)
+	{
+		Cursor cursor = null;
+		try { 
+			String[] proj = { MediaStore.Images.Media.DATA };
+			cursor = getContentResolver().query(contentUri,  proj, null, null, null);
+			int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+			cursor.moveToFirst();
+			return cursor.getString(column_index);
+		} finally {
+			if (cursor != null) {
+				cursor.close();
+			}
+		}
 	}
+
+	protected void onActivityResult(int requestCode, int resultCode, Intent imageReturnedIntent) { 
+        super.onActivityResult(requestCode, resultCode, imageReturnedIntent); 
+
+        switch(requestCode) { 
+        case R.id.chat_sendimage:
+            if(resultCode == RESULT_OK)
+            {
+				final Uri imageUri = imageReturnedIntent.getData();
+				String imagepath = getRealPathFromURI(imageUri);
+				mServiceAdapter.sendFile(mWithJabberID, imagepath);
+			}
+        }
+    }
 
 	private void sendMessage(String message) {
 		mChatInput.setText(null);
@@ -507,6 +546,11 @@ public class ChatWindow extends SherlockListActivity implements OnKeyListener,
 			Intent intent = new Intent(this, MainWindow.class);
 			intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 			startActivity(intent);
+			return true;
+		case R.id.chat_sendimage:
+			Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
+			photoPickerIntent.setType("image/*");
+			startActivityForResult(photoPickerIntent, R.id.chat_sendimage);	
 			return true;
 		default:
 			return super.onOptionsItemSelected(item);

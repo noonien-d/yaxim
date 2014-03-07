@@ -181,6 +181,8 @@
 
 	<!-- Chat menu -->
 	<string name="chatmenu_resend">Resend</string>
+	
+	<string name="chatmenu_send_image">Send Image</string>
 
 	<!-- GPS settings -->
 	<!--
