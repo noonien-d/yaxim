@@ -772,6 +772,7 @@ public class SmackableImp implements Smackable {
 				
 				//Remove resource from sender id
 				String from = request.getRequestor().split("/")[0];
+				String id = request.getStreamID();
 				String filename = transfer.getFileName();
 				
 				try {
@@ -783,11 +784,19 @@ public class SmackableImp implements Smackable {
 				}
 				
 				Log.w("Yaxim", "SmackableImp::receiveFile: " + from + " "  + filename);
+				
+				addChatMessageToDB(ChatConstants.INCOMING, from, "File: " + filename, 
+										ChatConstants.DS_SENT_OR_READ, System.currentTimeMillis(), id);
+				
 				while(!transfer.isDone()) 
 				{
 					try {
 						Thread.sleep(500L);
 						Log.w("Yaxim", (transfer.getProgress()*100) + "% done.");
+						
+						changeMessageContent(id, "Receiving: " + filename + "\n" + 
+													Math.round(transfer.getProgress()*100) + "% done.");
+						
 					} catch (InterruptedException e) {
 						Log.w("Yaxim", "SmackableImp::receiveFile: Exception" + e.getLocalizedMessage());
 					}
@@ -796,19 +805,32 @@ public class SmackableImp implements Smackable {
 				if (transfer.getStatus().equals(Status.refused))
 				{
 					Log.w("Yaxim", "SmackableImp::receiveFile: Refused / Cancelled");
+					
+					changeMessageDeliveryStatus(id, ChatConstants.DS_FAILED);
+					changeMessageContent(id, "File: " + filename + "\nTransfer refused");
 				}
 				if (transfer.getStatus().equals(Status.cancelled))
 				{
 					Log.w("Yaxim", "SmackableImp::receiveFile: Refused / Cancelled");
+					
+					changeMessageDeliveryStatus(id, ChatConstants.DS_FAILED);
+					changeMessageContent(id, "File: " + filename + "\nTransfer cancelled");
 				}
 				else if(transfer.getStatus().equals(Status.error)) 
 				{
 					Log.w("Yaxim", "SmackableImp::receiveFile: Error!!! " + transfer.getError());
+					
+					changeMessageDeliveryStatus(id, ChatConstants.DS_FAILED);
+					changeMessageContent(id, "File: " + filename + "\nError: " + transfer.getError());
 				} 
 				else
 				{
 					Log.w("Yaxim", "SmackableImp::receiveFile: Success");					
+					
+					changeMessageDeliveryStatus(id, ChatConstants.DS_ACKED);
+					changeMessageContent(id, "File: /sdcard/Download/" + filename);
 				}		
+				
 			}
 		});
 	}
@@ -840,6 +862,7 @@ public class SmackableImp implements Smackable {
 					Log.w("Yaxim", "\"" + IdWithResource + "\"");
 				}  
 								
+				Message newMessage	= null;
 				OutgoingFileTransfer transfer = null;
 					
 				try {
@@ -852,6 +875,11 @@ public class SmackableImp implements Smackable {
 				
 				try {
 					transfer.sendFile(fo, "File sent using yaxim!");
+					
+					newMessage = new Message(to, Message.Type.chat);
+					addChatMessageToDB(ChatConstants.OUTGOING, to, 
+											"File: " + fo.getName(), ChatConstants.DS_SENT_OR_READ,
+											System.currentTimeMillis(), newMessage.getPacketID());
 				}
 				catch (XMPPException e) {
 					Log.w("Yaxim", "SmackableImp::sendFile: SendFileError " + e.getLocalizedMessage());
@@ -863,7 +891,13 @@ public class SmackableImp implements Smackable {
 					try {
 						Thread.sleep(500L);
 						Log.w("Yaxim", (transfer.getProgress()*100) + "% done.");
+						
+						changeMessageContent(newMessage.getPacketID(), 
+												"Sending file: " + fo.getName() + "\n" + 
+												Math.round(transfer.getProgress()*100) + "% done.");
+						
 					} catch (InterruptedException e) {
+						
 						Log.w("Yaxim", "SmackableImp::sendFile: Exception" + e.getLocalizedMessage());
 					}
 				}
@@ -871,17 +905,30 @@ public class SmackableImp implements Smackable {
 				if (transfer.getStatus().equals(Status.refused))
 				{
 					Log.w("Yaxim", "SmackableImp::sendFile: Refused / Cancelled");
+					changeMessageDeliveryStatus(newMessage.getPacketID(), ChatConstants.DS_FAILED);
+					changeMessageContent(newMessage.getPacketID(), 
+												"File: " + fo.getName() + "\nTransfer refused");
 				}
 				else if (transfer.getStatus().equals(Status.cancelled))
 				{
 					Log.w("Yaxim", "SmackableImp::sendFile: Refused / Cancelled");
+					changeMessageDeliveryStatus(newMessage.getPacketID(), ChatConstants.DS_FAILED);
+					changeMessageContent(newMessage.getPacketID(), 
+												"File: " + fo.getName() + "\nTransfer cancelled");
 				}
 				else if(transfer.getStatus().equals(Status.error)) 
 				{
 					Log.w("Yaxim", "SmackableImp::sendFile: Error!!! " + transfer.getError());
+					changeMessageDeliveryStatus(newMessage.getPacketID(), ChatConstants.DS_FAILED);
+					changeMessageContent(newMessage.getPacketID(), 
+												"File: " + fo.getName() +
+												"\nError: " + transfer.getError());
 				} 
 				else
 				{
+					changeMessageDeliveryStatus(newMessage.getPacketID(), ChatConstants.DS_ACKED);
+					changeMessageContent(newMessage.getPacketID(), "File: " + fo.getName());
+					
 					Log.w("Yaxim", "SmackableImp::sendFile: Success");
 				}
 			}
@@ -1014,11 +1061,18 @@ public class SmackableImp implements Smackable {
 				+ ChatProvider.TABLE_NAME);
 		return mContentResolver.update(rowuri, cv,
 				ChatConstants.PACKET_ID + " = ? AND " +
-				ChatConstants.DELIVERY_STATUS + " != " + ChatConstants.DS_ACKED + " AND " +
-				ChatConstants.DIRECTION + " = " + ChatConstants.OUTGOING,
+				ChatConstants.DELIVERY_STATUS + " != " + ChatConstants.DS_ACKED,
 				new String[] { packetID }) > 0;
 	}
-
+	public boolean changeMessageContent(String packetID, String new_message) {
+		ContentValues cv = new ContentValues();
+		cv.put(ChatConstants.MESSAGE, new_message);
+		Uri rowuri = Uri.parse("content://" + ChatProvider.AUTHORITY + "/"
+				+ ChatProvider.TABLE_NAME);
+		return mContentResolver.update(rowuri, cv,
+				ChatConstants.PACKET_ID + " = ?",
+				new String[] { packetID }) > 0;
+	}
 	/** Check the server connection, reconnect if needed.
 	 *
 	 * This function will try to ping the server if we are connected, and try
