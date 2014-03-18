@@ -876,6 +876,9 @@ public class SmackableImp implements Smackable {
 					
 				try {
 					transfer = manager.createOutgoingFileTransfer(IdWithResource);
+					
+					//Set send timeout to 10 minutes
+					transfer.setResponseTimeout(600*1000);
 				}
 				catch (java.lang.Exception e) {
 					Log.w("Yaxim", "SmackableImp::sendFile: transfer create exception " + e.getMessage());
