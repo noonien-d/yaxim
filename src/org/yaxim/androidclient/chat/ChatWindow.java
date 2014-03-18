@@ -2,6 +2,7 @@ package org.yaxim.androidclient.chat;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.io.File;
 
 import org.yaxim.androidclient.MainWindow;
 import org.yaxim.androidclient.R;
@@ -53,6 +54,12 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Images;
+import android.text.SpannableStringBuilder;
+import android.text.style.ImageSpan;
+import android.graphics.BitmapFactory;
+import android.graphics.Bitmap;
+import android.text.Spannable;
+import android.widget.TextView.BufferType;
 
 @SuppressWarnings("deprecation") /* recent ClipboardManager only available since API 11 */
 public class ChatWindow extends SherlockListActivity implements OnKeyListener,
@@ -470,8 +477,46 @@ public class ChatWindow extends SherlockListActivity implements OnKeyListener,
 				mRowView.setBackgroundColor(0x30ff0000); // default is transparent
 				break;
 			}
-			getMessageView().setText(message);
-			getMessageView().setTextSize(TypedValue.COMPLEX_UNIT_SP, chatWindow.mChatFontSize);
+			
+			if ((message.toLowerCase().contains(".jpg") || message.toLowerCase().contains(".jpeg")) && (message.contains("File: /")))
+			{
+				try {
+					final String filepath = "/" + message.split(" /")[1];
+					
+					getMessageView().setText(filepath);
+					
+					File file = new File(filepath);
+					if(!file.exists())
+						return;
+						
+					Bitmap scaled = Bitmap.createScaledBitmap(BitmapFactory.decodeFile(filepath), 
+																400, 300, false);
+					
+					SpannableStringBuilder ssb = new SpannableStringBuilder(" ");
+					ssb.setSpan( new ImageSpan( scaled ), 0, 1, Spannable.SPAN_INCLUSIVE_INCLUSIVE );	
+					getMessageView().setText( ssb, BufferType.SPANNABLE );
+					
+					getMessageView().setOnClickListener(new View.OnClickListener() {
+						@Override
+						public void onClick(View v) {
+							Intent intent = new Intent();
+							intent.setAction(Intent.ACTION_VIEW);
+							intent.setDataAndType(Uri.parse("file://" + filepath), "image/*");
+							startActivity(intent);
+						}
+					});
+					
+				} catch (Exception e)
+				{
+					Toast toastNotification = Toast.makeText(chatWindow, e.getLocalizedMessage(), Toast.LENGTH_LONG);
+					toastNotification.show();
+				}
+			}
+			else
+			{
+				getMessageView().setText(message);
+				getMessageView().setTextSize(TypedValue.COMPLEX_UNIT_SP, chatWindow.mChatFontSize);
+			}
 		}
 		
 		TextView getDateView() {
