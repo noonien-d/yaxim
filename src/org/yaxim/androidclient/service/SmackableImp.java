@@ -856,21 +856,43 @@ public class SmackableImp implements Smackable {
 			Log.w("Yaxim", "SmackableImp::sendFile: file not found");
 			throw new YaximXMPPException("File not found!");
 		}
+		if(!isAuthenticated())
+		{
+			Log.w("Yaxim", "SmackableImp::sendFile: not connected");
+			throw new YaximXMPPException("You must be online to send files!");
+		}		
+		
+		//Get a valid presence id with resource
+		//Currently random resource with ft-support
+		Iterator<org.jivesoftware.smack.packet.Presence> presences = mRoster.getPresences(to);
+		ServiceDiscoveryManager discoManager = ServiceDiscoveryManager.getInstanceFor(mXMPPConnection);
+		String toRes = null;
+		while(presences.hasNext())
+		{
+			try {
+				String iter = presences.next().getFrom();
+				
+				if(discoManager.discoverInfo(iter).containsFeature("http://jabber.org/protocol/si/profile/file-transfer"))
+					toRes = iter;
+			}
+			catch (java.lang.Exception e) {
+				Log.w("Yaxim", "SmackableImp::sendFile: feature disco: " + e.getMessage());
+				throw new YaximXMPPException("feature disco: " + e.getMessage());
+			}
+			Log.w("Yaxim", "\"" + toRes + "\"");
+		}
+		
+		if (toRes == null)
+		{
+			Log.w("Yaxim", "SmackableImp::sendFile: No resource suports file transfer");
+			throw new YaximXMPPException("Does not support filetransfer!");
+		}
+		
+		final String IdWithResource = toRes;
 		
 		Thread currentFileTransferThread = new Thread() {
 			@Override
 			public void run() {
-				
-				//Get a valid presence id with resource
-				//Currently random resource
-				Iterator<org.jivesoftware.smack.packet.Presence> presences = mRoster.getPresences(to);
-				String IdWithResource = to;
-				while(presences.hasNext())
-				{
-					IdWithResource = presences.next().getFrom();
-					Log.w("Yaxim", "\"" + IdWithResource + "\"");
-				}  
-								
 				Message newMessage	= null;
 				OutgoingFileTransfer transfer = null;
 					
@@ -939,7 +961,7 @@ public class SmackableImp implements Smackable {
 				else
 				{
 					changeMessageDeliveryStatus(newMessage.getPacketID(), ChatConstants.DS_ACKED);
-					changeMessageContent(newMessage.getPacketID(), "File: " + fo.getName());
+					changeMessageContent(newMessage.getPacketID(), "File: " + file);
 					
 					Log.w("Yaxim", "SmackableImp::sendFile: Success");
 				}
