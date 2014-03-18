@@ -3,6 +3,8 @@ package org.yaxim.androidclient.chat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.io.File;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
 
 import org.yaxim.androidclient.MainWindow;
 import org.yaxim.androidclient.R;
@@ -317,6 +319,48 @@ public class ChatWindow extends SherlockListActivity implements OnKeyListener,
             {
 				final Uri imageUri = imageReturnedIntent.getData();
 				String imagepath = getRealPathFromURI(imageUri);
+				
+				Bitmap bitmap = BitmapFactory.decodeFile(imagepath);
+				
+				int height = bitmap.getHeight();
+				int width = bitmap.getWidth();
+				
+				Log.w("Yaxim", "Old size H:" + height + " W:" + width);
+				
+				float max = Math.max(height, width);
+				
+				final float maxsize = 800;
+				
+				File file = null;
+				
+				if (max > maxsize)
+				{
+					float factor = maxsize / max;
+				
+					height = Math.round(height * factor);
+					width = Math.round(width * factor);
+					
+					Bitmap scaled = Bitmap.createScaledBitmap(bitmap, width, height, false);
+					bitmap.recycle();
+
+					try {
+						file = File.createTempFile("yaxim_img", ".jpg", getCacheDir()); 
+						OutputStream stream = new FileOutputStream(file);
+						scaled.compress(Bitmap.CompressFormat.JPEG, 90, stream);
+						stream.flush();
+						stream.close();
+						
+						scaled.recycle();
+					}catch(Exception e)
+					{
+						Toast toastNotification = Toast.makeText(this, "Image resize: " + e.getMessage(), Toast.LENGTH_LONG);
+						toastNotification.show();
+					}
+				}
+				else 
+					file = new File(imagepath);
+				
+				imagepath = file.getPath();
 				mServiceAdapter.sendFile(mWithJabberID, imagepath);
 			}
         }
