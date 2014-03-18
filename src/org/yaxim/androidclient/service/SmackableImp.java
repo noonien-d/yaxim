@@ -87,6 +87,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
+import android.os.Environment;
 
 import android.net.Uri;
 import android.util.Log;
@@ -774,9 +775,13 @@ public class SmackableImp implements Smackable {
 				String from = request.getRequestor().split("/")[0];
 				String id = request.getStreamID();
 				String filename = transfer.getFileName();
+				String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getPath() + "/yaxim/";
+				
+				File directory = new File(path);
+				directory.mkdirs();
 				
 				try {
-					transfer.recieveFile(new File("/sdcard/Download/"+filename));
+					transfer.recieveFile(new File(path+filename));
 				} catch (XMPPException e)
 				{
 					Log.w("Yaxim", "SmackableImp::receiveFile Exception" + e.getLocalizedMessage());
@@ -828,8 +833,8 @@ public class SmackableImp implements Smackable {
 					Log.w("Yaxim", "SmackableImp::receiveFile: Success");					
 					
 					changeMessageDeliveryStatus(id, ChatConstants.DS_ACKED);
-					changeMessageContent(id, "File: /sdcard/Download/" + filename);
-				}		
+					changeMessageContent(id, "File: " + path + filename);
+				}
 				
 			}
 		});
