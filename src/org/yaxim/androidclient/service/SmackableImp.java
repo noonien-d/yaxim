@@ -836,6 +836,10 @@ public class SmackableImp implements Smackable {
 					changeMessageContent(id, "File: " + path + filename);
 				}
 				
+				mServiceCallBack.newMessage(from, "File: " + path + filename, false);
+				
+				mService.getApplicationContext().sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, 
+																			Uri.parse("file://" + path + filename)));
 			}
 		});
 	}
